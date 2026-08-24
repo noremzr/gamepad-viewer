@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Minimalist OBS Overlay (WebSocket)</title>
+  <title>Minimalist OBS Overlay (WebSocket Fixed)</title>
   <style>
     :root {
       --bg-color: rgba(18, 18, 22, 0.9);
@@ -110,7 +110,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.1s ease-out, opacity 0.2s;
+      transition: transform 0.08s linear, opacity 0.2s;
       opacity: 0.3;
     }
 
@@ -244,9 +244,10 @@
     const kbLayout = document.getElementById('keyboard-layout');
     const gpLayout = document.getElementById('gamepad-layout');
     const mouseTracker = document.getElementById('mouse-tracker');
+    
     let activeMode = 'keyboard';
     let mouseTimeout;
-    let lastX = 0, lastY = 0;
+    let lastX = null, lastY = null;
 
     function setMode(mode) {
       if (activeMode !== mode) {
@@ -261,7 +262,7 @@
       }
     }
 
-    // CONEXÃO WEBSOCKET COM O NODE.JS (TECLADO + MOUSE GLOBAL)
+    // WEBSOCKET COM TRATAMENTO DE DELTA SUAVE PARA O MOUSE
     const socket = new WebSocket('ws://localhost:8080');
 
     socket.onmessage = (event) => {
@@ -286,13 +287,20 @@
         if (el) el.classList.remove('pressed');
       } 
       else if (data.type === 'mousemove') {
-        setMode('keyboard');
+        if (lastX === null || lastY === null) {
+          lastX = data.x;
+          lastY = data.y;
+          return;
+        }
+
         const dx = data.x - lastX;
         const dy = data.y - lastY;
         lastX = data.x;
         lastY = data.y;
 
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        // Filtro para ignorar pequenos ruídos de movimento
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          setMode('keyboard');
           const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
           mouseTracker.style.transform = `rotate(${angle}deg)`;
           mouseTracker.style.opacity = '1';
@@ -300,40 +308,47 @@
           clearTimeout(mouseTimeout);
           mouseTimeout = setTimeout(() => {
             mouseTracker.style.opacity = '0.3';
-          }, 800);
+          }, 600);
         }
       }
     };
 
-    // GAMEPAD API (CONTROLE CONTINUA LENDO NATIVAMENTE)
+    // LEITURA DO GAMEPAD CORRIGIDA COM DETECÇÃO DE ATIVIDADE
     function checkGamepadState() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       const gp = gamepads[0];
 
       if (gp) {
+        let hasInput = false;
+
         gp.buttons.forEach((btn, idx) => {
           const el = document.getElementById(`btn-${idx}`);
           if (btn.pressed) {
-            setMode('gamepad');
+            hasInput = true;
             if (el) el.classList.add('pressed');
           } else {
             if (el) el.classList.remove('pressed');
           }
         });
 
-        const deadZone = 0.15;
+        const deadZone = 0.2;
         const leftX = Math.abs(gp.axes[0]) > deadZone ? gp.axes[0] : 0;
         const leftY = Math.abs(gp.axes[1]) > deadZone ? gp.axes[1] : 0;
         const rightX = Math.abs(gp.axes[2]) > deadZone ? gp.axes[2] : 0;
         const rightY = Math.abs(gp.axes[3]) > deadZone ? gp.axes[3] : 0;
 
         if (leftX || leftY || rightX || rightY) {
+          hasInput = true;
+        }
+
+        if (hasInput) {
           setMode('gamepad');
         }
 
         document.getElementById('dot-left').style.transform = `translate(${leftX * 13}px, ${leftY * 13}px)`;
         document.getElementById('dot-right').style.transform = `translate(${rightX * 13}px, ${rightY * 13}px)`;
       }
+
       requestAnimationFrame(checkGamepadState);
     }
     requestAnimationFrame(checkGamepadState);
