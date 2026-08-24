@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Minimalist OBS Overlay</title>
+  <style>
+    :root {
+      --bg-color: rgba(18, 18, 22, 0.9);
+      --border-color: rgba(255, 255, 255, 0.12);
+      --key-bg: rgba(255, 255, 255, 0.05);
+      --key-text: #e2e8f0;
+      --active-color: #00f2fe;
+      --active-text: #000;
+      --active-glow: 0 0 12px rgba(0, 242, 254, 0.6);
+    }
+
+    body {
+      margin: 0;
+      padding: 15px;
+      background: transparent;
+      color: var(--key-text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .layout {
+      display: none;
+      background: var(--bg-color);
+      padding: 12px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      width: fit-content;
+    }
+
+    .layout.active {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .key {
+      background: var(--key-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      height: 30px;
+      min-width: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 10px;
+      box-sizing: border-box;
+      transition: all 0.06s ease;
+    }
+
+    /* TECLADO COMPACTO */
+    .keyboard-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .row {
+      display: flex;
+      gap: 3px;
+    }
+
+    .w-tab { width: 40px; }
+    .w-shift { width: 48px; }
+    .w-ctrl, .w-win, .w-alt { width: 35px; }
+    .w-space { width: 118px; }
+
+    /* MOUSE JUNTO AO TECLADO */
+    .mouse-wrapper {
+      border-left: 1px solid var(--border-color);
+      padding-left: 8px;
+      margin-left: 2px;
+      display: flex;
+      align-items: center;
+    }
+
+    .mouse-body {
+      width: 52px;
+      height: 82px;
+      border: 2px solid var(--border-color);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      align-items: center;
+    }
+
+    .mouse-buttons {
+      display: flex;
+      width: 100%;
+      height: 32px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .m-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+    }
+
+    .m-btn.left { border-right: 1px solid var(--border-color); border-top-left-radius: 22px; }
+    .m-btn.right { border-top-right-radius: 22px; }
+
+    .mouse-tracker {
+      position: absolute;
+      bottom: 12px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s ease-out, opacity 0.2s;
+      opacity: 0.3;
+    }
+
+    .mouse-arrow {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 10px solid var(--active-color);
+    }
+
+    /* CONTROLE FORMATO ANATÔMICO */
+    .gamepad-wrapper {
+      position: relative;
+      width: 310px;
+      height: 200px;
+    }
+
+    .controller-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      fill: rgba(0,0,0,0.3);
+      stroke: var(--border-color);
+      stroke-width: 2px;
+    }
+
+    .gp-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px 16px;
+      box-sizing: border-box;
+    }
+
+    .gp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .triggers { padding: 0 12px; }
+    .trigger-btn { height: 22px; width: 34px; font-size: 9px; border-radius: 3px; }
+
+    .center-btns {
+      justify-content: center;
+      gap: 16px;
+      margin-top: -6px;
+    }
+
+    .dpad, .face-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 26px);
+      grid-template-rows: repeat(3, 26px);
+      gap: 2px;
+    }
+
+    .dpad .key, .face-buttons .key {
+      height: 26px;
+      min-width: 26px;
+      border-radius: 50%;
+      font-size: 10px;
+    }
+
+    .sticks {
+      justify-content: space-around;
+      padding: 0 45px;
+      margin-bottom: 8px;
+    }
+
+    .stick-base {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--border-color);
+      background: rgba(0,0,0,0.4);
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stick-dot {
+      width: 16px;
+      height: 16px;
+      background: var(--active-color);
+      border-radius: 50%;
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      box-shadow: var(--active-glow);
+    }
+
+    .stick-label {
+      font-size: 8px;
+      font-weight: bold;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .pressed {
+      background: var(--active-color) !important;
+      color: var(--active-text) !important;
+      border-color: var(--active-color) !important;
+      box-shadow: var(--active-glow);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TECLADO + MOUSE COMPACTOS -->
+  <div id="keyboard-layout" class="layout active">
+    <div class="keyboard-grid">
+      <div class="row">
+        <div class="key" id="key-Digit1">1</div>
+        <div class="key" id="key-Digit2">2</div>
+        <div class="key" id="key-Digit3">3</div>
+        <div class="key" id="key-Digit4">4</div>
+        <div class="key" id="key-Digit5">5</div>
+      </div>
+      <div class="row">
+        <div class="key w-tab" id="key-Tab">TAB</div>
+        <div class="key" id="key-KeyQ">Q</div>
+        <div class="key" id="key-KeyW">W</div>
+        <div class="key" id="key-KeyE">E</div>
+        <div class="key" id="key-KeyR">R</div>
+        <div class="key" id="key-KeyT">T</div>
+      </div>
+      <div class="row">
+        <div class="key" id="key-KeyA">A</div>
+        <div class="key" id="key-KeyS">S</div>
+        <div class="key" id="key-KeyD">D</div>
+        <div class="key" id="key-KeyF">F</div>
+        <div class="key" id="key-KeyG">G</div>
+      </div>
+      <div class="row">
+        <div class="key w-shift" id="key-ShiftLeft">SHIFT</div>
+        <div class="key" id="key-KeyZ">Z</div>
+        <div class="key" id="key-KeyX">X</div>
+        <div class="key" id="key-KeyC">C</div>
+        <div class="key" id="key-KeyB">B</div>
+      </div>
+      <div class="row">
+        <div class="key w-ctrl" id="key-ControlLeft">CTRL</div>
+        <div class="key w-win" id="key-MetaLeft">WIN</div>
+        <div class="key w-alt" id="key-AltLeft">ALT</div>
+        <div class="key w-space" id="key-Space">SPACE</div>
+      </div>
+    </div>
+
+    <div class="mouse-wrapper">
+      <div class="mouse-body">
+        <div class="mouse-buttons">
+          <div class="m-btn left" id="mouse-0">LMB</div>
+          <div class="m-btn right" id="mouse-2">RMB</div>
+        </div>
+        <div class="mouse-tracker" id="mouse-tracker">
+          <div class="mouse-arrow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLE REFINED FORMATO PS4 / XBOX -->
+  <div id="gamepad-layout" class="layout">
+    <div class="gamepad-wrapper">
+      <svg class="controller-svg" viewBox="0 0 310 200">
+        <path d="M 60,15 
+                 C 100,10 210,10 250,15 
+                 C 285,18 305,45 300,85 
+                 C 295,125 270,195 240,195 
+                 C 220,195 205,160 185,130 
+                 Q 155,115 125,130 
+                 C 105,160 90,195 70,195 
+                 C 40,195 15,125 10,85 
+                 C 5,45 25,18 60,15 Z" />
+      </svg>
+
+      <div class="gp-layer">
+        <div class="gp-row triggers">
+          <div class="row" style="gap:2px;"><div class="key trigger-btn" id="btn-6">L2</div><div class="key trigger-btn" id="btn-4">L1</div></div>
+          <div class="row" style="gap:2px;"><div class="key trigger-btn" id="btn-5">R1</div><div class="key trigger-btn" id="btn-7">R2</div></div>
+        </div>
+
+        <div class="gp-row center-btns">
+          <div class="key" id="btn-8" style="font-size: 8px; width: 36px; height: 16px;">SHARE</div>
+          <div class="key" id="btn-9" style="font-size: 8px; width: 36px; height: 16px;">OPTIONS</div>
+        </div>
+
+        <div class="gp-row">
+          <div class="dpad">
+            <div></div><div class="key" id="btn-12">↑</div><div></div>
+            <div class="key" id="btn-14">←</div><div></div><div class="key" id="btn-15">→</div>
+            <div></div><div class="key" id="btn-13">↓</div><div></div>
+          </div>
+
+          <div class="face-buttons">
+            <div></div><div class="key" id="btn-3">Y</div><div></div>
+            <div class="key" id="btn-2">X</div><div></div><div class="key" id="btn-1">B</div>
+            <div></div><div class="key" id="btn-0">A</div><div></div>
+          </div>
+        </div>
+
+        <div class="gp-row sticks">
+          <div class="stick-base key" id="btn-10">
+            <span class="stick-label">L3</span>
+            <div class="stick-dot" id="dot-left"></div>
+          </div>
+          <div class="stick-base key" id="btn-11">
+            <span class="stick-label">R3</span>
+            <div class="stick-dot" id="dot-right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const kbLayout = document.getElementById('keyboard-layout');
+    const gpLayout = document.getElementById('gamepad-layout');
+    const mouseTracker = document.getElementById('mouse-tracker');
+    let activeMode = 'keyboard';
+    let mouseTimeout;
+
+    function setMode(mode) {
+      if (activeMode !== mode) {
+        activeMode = mode;
+        if (mode === 'keyboard') {
+          kbLayout.classList.add('active');
+          gpLayout.classList.remove('active');
+        } else {
+          gpLayout.classList.add('active');
+          kbLayout.classList.remove('active');
+        }
+      }
+    }
+
+    // TRACKER DE MOVIMENTO DO MOUSE
+    window.addEventListener('mousemove', (e) => {
+      setMode('keyboard');
+      const movementX = e.movementX || 0;
+      const movementY = e.movementY || 0;
+
+      if (Math.abs(movementX) > 1 || Math.abs(movementY) > 1) {
+        const angle = Math.atan2(movementY, movementX) * (180 / Math.PI) + 90;
+        mouseTracker.style.transform = `rotate(${angle}deg)`;
+        mouseTracker.style.opacity = '1';
+
+        clearTimeout(mouseTimeout);
+        mouseTimeout = setTimeout(() => {
+          mouseTracker.style.opacity = '0.3';
+        }, 800);
+      }
+    });
+
+    // TECLADO E CLIQUE DE MOUSE
+    window.addEventListener('keydown', (e) => {
+      setMode('keyboard');
+      const el = document.getElementById(`key-${e.code}`);
+      if (el) el.classList.add('pressed');
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const el = document.getElementById(`key-${e.code}`);
+      if (el) el.classList.remove('pressed');
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      setMode('keyboard');
+      const el = document.getElementById(`mouse-${e.button}`);
+      if (el) el.classList.add('pressed');
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      const el = document.getElementById(`mouse-${e.button}`);
+      if (el) el.classList.remove('pressed');
+    });
+
+    // LÓGICA DO GAMEPAD
+    function checkGamepadState() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const gp = gamepads[0];
+
+      if (gp) {
+        gp.buttons.forEach((btn, idx) => {
+          const el = document.getElementById(`btn-${idx}`);
+          if (btn.pressed) {
+            setMode('gamepad');
+            if (el) el.classList.add('pressed');
+          } else {
+            if (el) el.classList.remove('pressed');
+          }
+        });
+
+        const deadZone = 0.15;
+        const leftX = Math.abs(gp.axes[0]) > deadZone ? gp.axes[0] : 0;
+        const leftY = Math.abs(gp.axes[1]) > deadZone ? gp.axes[1] : 0;
+        const rightX = Math.abs(gp.axes[2]) > deadZone ? gp.axes[2] : 0;
+        const rightY = Math.abs(gp.axes[3]) > deadZone ? gp.axes[3] : 0;
+
+        if (leftX || leftY || rightX || rightY) {
+          setMode('gamepad');
+        }
+
+        document.getElementById('dot-left').style.transform = `translate(${leftX * 13}px, ${leftY * 13}px)`;
+        document.getElementById('dot-right').style.transform = `translate(${rightX * 13}px, ${rightY * 13}px)`;
+      }
+    }
+
+    // WEB WORKER EMBUTIDO PARA EXECUÇÃO EM SEGUNDO PLANO
+    const workerCode = `
+      setInterval(() => {
+        postMessage('tick');
+      }, 1000 / 60);
+    `;
+
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    worker.onmessage = () => {
+      checkGamepadState();
+    };
+  </script>
+</body>
+</html>
