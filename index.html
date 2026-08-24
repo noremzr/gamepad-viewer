@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Minimalist OBS Overlay (WebSocket Fixed)</title>
+  <title>Minimalist OBS Overlay (Auto Switch Fixed)</title>
   <style>
     :root {
       --bg-color: rgba(18, 18, 22, 0.9);
@@ -33,12 +33,12 @@
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(10px);
       width: fit-content;
+      gap: 10px;
+      align-items: center;
     }
 
     .layout.active {
-      display: flex;
-      gap: 10px;
-      align-items: center;
+      display: flex !important;
     }
 
     .key {
@@ -102,26 +102,30 @@
     .m-btn.left { border-right: 1px solid var(--border-color); border-top-left-radius: 22px; }
     .m-btn.right { border-top-right-radius: 22px; }
 
-    .mouse-tracker {
+    .mouse-joystick-base {
       position: absolute;
-      bottom: 12px;
-      width: 16px;
-      height: 16px;
+      bottom: 10px;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.08s linear, opacity 0.2s;
-      opacity: 0.3;
     }
 
-    .mouse-arrow {
-      width: 0;
-      height: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-bottom: 10px solid var(--active-color);
+    .mouse-joystick-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--active-color);
+      border-radius: 50%;
+      box-shadow: var(--active-glow);
+      transition: transform 0.05s ease-out, opacity 0.2s;
+      opacity: 0.4;
     }
 
+    /* ESTILOS CONTROLE */
     .gamepad-wrapper { position: relative; width: 310px; height: 200px; }
     .controller-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; fill: rgba(0,0,0,0.3); stroke: var(--border-color); stroke-width: 2px; }
     .gp-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 16px; box-sizing: border-box; }
@@ -192,8 +196,8 @@
           <div class="m-btn left" id="m-1">LMB</div>
           <div class="m-btn right" id="m-2">RMB</div>
         </div>
-        <div class="mouse-tracker" id="mouse-tracker">
-          <div class="mouse-arrow"></div>
+        <div class="mouse-joystick-base">
+          <div class="mouse-joystick-dot" id="mouse-dot"></div>
         </div>
       </div>
     </div>
@@ -243,26 +247,26 @@
   <script>
     const kbLayout = document.getElementById('keyboard-layout');
     const gpLayout = document.getElementById('gamepad-layout');
-    const mouseTracker = document.getElementById('mouse-tracker');
-    
-    let activeMode = 'keyboard';
+    const mouseDot = document.getElementById('mouse-dot');
+
+    let currentMode = 'keyboard';
     let mouseTimeout;
     let lastX = null, lastY = null;
+    const maxRadius = 8;
 
     function setMode(mode) {
-      if (activeMode !== mode) {
-        activeMode = mode;
-        if (mode === 'keyboard') {
-          kbLayout.classList.add('active');
-          gpLayout.classList.remove('active');
-        } else {
-          gpLayout.classList.add('active');
-          kbLayout.classList.remove('active');
-        }
+      if (currentMode === mode) return;
+      currentMode = mode;
+      if (mode === 'keyboard') {
+        kbLayout.classList.add('active');
+        gpLayout.classList.remove('active');
+      } else {
+        gpLayout.classList.add('active');
+        kbLayout.classList.remove('active');
       }
     }
 
-    // WEBSOCKET COM TRATAMENTO DE DELTA SUAVE PARA O MOUSE
+    // WEBSOCKET (TECLADO + MOUSE)
     const socket = new WebSocket('ws://localhost:8080');
 
     socket.onmessage = (event) => {
@@ -293,35 +297,48 @@
           return;
         }
 
-        const dx = data.x - lastX;
-        const dy = data.y - lastY;
+        let dx = data.x - lastX;
+        let dy = data.y - lastY;
         lastX = data.x;
         lastY = data.y;
 
-        // Filtro para ignorar pequenos ruídos de movimento
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        // Só altera para teclado se houver movimento relevante de mouse
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
           setMode('keyboard');
-          const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-          mouseTracker.style.transform = `rotate(${angle}deg)`;
-          mouseTracker.style.opacity = '1';
+          const distance = Math.hypot(dx, dy);
+          const clampedDistance = Math.min(distance, maxRadius);
+          const moveX = (dx / distance) * clampedDistance;
+          const moveY = (dy / distance) * clampedDistance;
+
+          mouseDot.style.transform = `translate(${moveX}px, ${moveY}px)`;
+          mouseDot.style.opacity = '1';
 
           clearTimeout(mouseTimeout);
           mouseTimeout = setTimeout(() => {
-            mouseTracker.style.opacity = '0.3';
-          }, 600);
+            mouseDot.style.transform = 'translate(0px, 0px)';
+            mouseDot.style.opacity = '0.4';
+          }, 150);
         }
       }
     };
 
-    // LEITURA DO GAMEPAD CORRIGIDA COM DETECÇÃO DE ATIVIDADE
-    function checkGamepadState() {
+    // LEITURA NATIVA DO CONTROLE (GAMEPAD API)
+    function pollGamepad() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-      const gp = gamepads[0];
+      let activeGamepad = null;
 
-      if (gp) {
+      for (let i = 0; i < gamepads.length; i++) {
+        if (gamepads[i]) {
+          activeGamepad = gamepads[i];
+          break;
+        }
+      }
+
+      if (activeGamepad) {
         let hasInput = false;
 
-        gp.buttons.forEach((btn, idx) => {
+        // Leitura de Botões
+        activeGamepad.buttons.forEach((btn, idx) => {
           const el = document.getElementById(`btn-${idx}`);
           if (btn.pressed) {
             hasInput = true;
@@ -331,16 +348,18 @@
           }
         });
 
-        const deadZone = 0.2;
-        const leftX = Math.abs(gp.axes[0]) > deadZone ? gp.axes[0] : 0;
-        const leftY = Math.abs(gp.axes[1]) > deadZone ? gp.axes[1] : 0;
-        const rightX = Math.abs(gp.axes[2]) > deadZone ? gp.axes[2] : 0;
-        const rightY = Math.abs(gp.axes[3]) > deadZone ? gp.axes[3] : 0;
+        // Leitura de Analógicos (Deadzone 0.22)
+        const deadZone = 0.22;
+        const leftX = Math.abs(activeGamepad.axes[0]) > deadZone ? activeGamepad.axes[0] : 0;
+        const leftY = Math.abs(activeGamepad.axes[1]) > deadZone ? activeGamepad.axes[1] : 0;
+        const rightX = Math.abs(activeGamepad.axes[2]) > deadZone ? activeGamepad.axes[2] : 0;
+        const rightY = Math.abs(activeGamepad.axes[3]) > deadZone ? activeGamepad.axes[3] : 0;
 
         if (leftX || leftY || rightX || rightY) {
           hasInput = true;
         }
 
+        // Troca o modo apenas se algum botão/analógico do controle for acionado
         if (hasInput) {
           setMode('gamepad');
         }
@@ -349,9 +368,10 @@
         document.getElementById('dot-right').style.transform = `translate(${rightX * 13}px, ${rightY * 13}px)`;
       }
 
-      requestAnimationFrame(checkGamepadState);
+      requestAnimationFrame(pollGamepad);
     }
-    requestAnimationFrame(checkGamepadState);
+
+    requestAnimationFrame(pollGamepad);
   </script>
 </body>
 </html>
