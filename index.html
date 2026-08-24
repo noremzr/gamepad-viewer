@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Minimalist OBS Overlay</title>
+  <title>Minimalist OBS Overlay (WebSocket)</title>
   <style>
     :root {
       --bg-color: rgba(18, 18, 22, 0.9);
@@ -56,24 +56,14 @@
       transition: all 0.06s ease;
     }
 
-    /* TECLADO COMPACTO */
-    .keyboard-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .row {
-      display: flex;
-      gap: 3px;
-    }
+    .keyboard-grid { display: flex; flex-direction: column; gap: 3px; }
+    .row { display: flex; gap: 3px; }
 
     .w-tab { width: 40px; }
     .w-shift { width: 48px; }
     .w-ctrl, .w-win, .w-alt { width: 35px; }
     .w-space { width: 118px; }
 
-    /* MOUSE JUNTO AO TECLADO */
     .mouse-wrapper {
       border-left: 1px solid var(--border-color);
       padding-left: 8px;
@@ -132,101 +122,19 @@
       border-bottom: 10px solid var(--active-color);
     }
 
-    /* CONTROLE FORMATO ANATÔMICO */
-    .gamepad-wrapper {
-      position: relative;
-      width: 310px;
-      height: 200px;
-    }
-
-    .controller-svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      fill: rgba(0,0,0,0.3);
-      stroke: var(--border-color);
-      stroke-width: 2px;
-    }
-
-    .gp-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 10px 16px;
-      box-sizing: border-box;
-    }
-
-    .gp-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
+    .gamepad-wrapper { position: relative; width: 310px; height: 200px; }
+    .controller-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; fill: rgba(0,0,0,0.3); stroke: var(--border-color); stroke-width: 2px; }
+    .gp-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 16px; box-sizing: border-box; }
+    .gp-row { display: flex; justify-content: space-between; align-items: center; }
     .triggers { padding: 0 12px; }
     .trigger-btn { height: 22px; width: 34px; font-size: 9px; border-radius: 3px; }
-
-    .center-btns {
-      justify-content: center;
-      gap: 16px;
-      margin-top: -6px;
-    }
-
-    .dpad, .face-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 26px);
-      grid-template-rows: repeat(3, 26px);
-      gap: 2px;
-    }
-
-    .dpad .key, .face-buttons .key {
-      height: 26px;
-      min-width: 26px;
-      border-radius: 50%;
-      font-size: 10px;
-    }
-
-    .sticks {
-      justify-content: space-around;
-      padding: 0 45px;
-      margin-bottom: 8px;
-    }
-
-    .stick-base {
-      width: 44px;
-      height: 44px;
-      border: 1px solid var(--border-color);
-      background: rgba(0,0,0,0.4);
-      border-radius: 50%;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .stick-dot {
-      width: 16px;
-      height: 16px;
-      background: var(--active-color);
-      border-radius: 50%;
-      position: absolute;
-      top: 14px;
-      left: 14px;
-      box-shadow: var(--active-glow);
-    }
-
-    .stick-label {
-      font-size: 8px;
-      font-weight: bold;
-      opacity: 0.5;
-      pointer-events: none;
-    }
+    .center-btns { justify-content: center; gap: 16px; margin-top: -6px; }
+    .dpad, .face-buttons { display: grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); gap: 2px; }
+    .dpad .key, .face-buttons .key { height: 26px; min-width: 26px; border-radius: 50%; font-size: 10px; }
+    .sticks { justify-content: space-around; padding: 0 45px; margin-bottom: 8px; }
+    .stick-base { width: 44px; height: 44px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.4); border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; }
+    .stick-dot { width: 16px; height: 16px; background: var(--active-color); border-radius: 50%; position: absolute; top: 14px; left: 14px; box-shadow: var(--active-glow); }
+    .stick-label { font-size: 8px; font-weight: bold; opacity: 0.5; pointer-events: none; }
 
     .pressed {
       background: var(--active-color) !important;
@@ -238,51 +146,51 @@
 </head>
 <body>
 
-  <!-- TECLADO + MOUSE COMPACTOS -->
+  <!-- TECLADO + MOUSE -->
   <div id="keyboard-layout" class="layout active">
     <div class="keyboard-grid">
       <div class="row">
-        <div class="key" id="key-Digit1">1</div>
-        <div class="key" id="key-Digit2">2</div>
-        <div class="key" id="key-Digit3">3</div>
-        <div class="key" id="key-Digit4">4</div>
-        <div class="key" id="key-Digit5">5</div>
+        <div class="key" id="k-2">1</div>
+        <div class="key" id="k-3">2</div>
+        <div class="key" id="k-4">3</div>
+        <div class="key" id="k-5">4</div>
+        <div class="key" id="k-6">5</div>
       </div>
       <div class="row">
-        <div class="key w-tab" id="key-Tab">TAB</div>
-        <div class="key" id="key-KeyQ">Q</div>
-        <div class="key" id="key-KeyW">W</div>
-        <div class="key" id="key-KeyE">E</div>
-        <div class="key" id="key-KeyR">R</div>
-        <div class="key" id="key-KeyT">T</div>
+        <div class="key w-tab" id="k-15">TAB</div>
+        <div class="key" id="k-16">Q</div>
+        <div class="key" id="k-17">W</div>
+        <div class="key" id="k-18">E</div>
+        <div class="key" id="k-19">R</div>
+        <div class="key" id="k-20">T</div>
       </div>
       <div class="row">
-        <div class="key" id="key-KeyA">A</div>
-        <div class="key" id="key-KeyS">S</div>
-        <div class="key" id="key-KeyD">D</div>
-        <div class="key" id="key-KeyF">F</div>
-        <div class="key" id="key-KeyG">G</div>
+        <div class="key" id="k-30">A</div>
+        <div class="key" id="k-31">S</div>
+        <div class="key" id="k-32">D</div>
+        <div class="key" id="k-33">F</div>
+        <div class="key" id="k-34">G</div>
       </div>
       <div class="row">
-        <div class="key w-shift" id="key-ShiftLeft">SHIFT</div>
-        <div class="key" id="key-KeyZ">Z</div>
-        <div class="key" id="key-KeyX">X</div>
-        <div class="key" id="key-KeyC">C</div>
-        <div class="key" id="key-KeyB">B</div>
+        <div class="key w-shift" id="k-42">SHIFT</div>
+        <div class="key" id="k-44">Z</div>
+        <div class="key" id="k-45">X</div>
+        <div class="key" id="k-46">C</div>
+        <div class="key" id="k-48">B</div>
       </div>
       <div class="row">
-        <div class="key w-ctrl" id="key-ControlLeft">CTRL</div>
-        <div class="key w-win" id="key-MetaLeft">WIN</div>
-        <div class="key w-alt" id="key-AltLeft">ALT</div>
-        <div class="key w-space" id="key-Space">SPACE</div>
+        <div class="key w-ctrl" id="k-29">CTRL</div>
+        <div class="key w-win" id="k-3675">WIN</div>
+        <div class="key w-alt" id="k-56">ALT</div>
+        <div class="key w-space" id="k-57">SPACE</div>
       </div>
     </div>
 
     <div class="mouse-wrapper">
       <div class="mouse-body">
         <div class="mouse-buttons">
-          <div class="m-btn left" id="mouse-0">LMB</div>
-          <div class="m-btn right" id="mouse-2">RMB</div>
+          <div class="m-btn left" id="m-1">LMB</div>
+          <div class="m-btn right" id="m-2">RMB</div>
         </div>
         <div class="mouse-tracker" id="mouse-tracker">
           <div class="mouse-arrow"></div>
@@ -291,46 +199,33 @@
     </div>
   </div>
 
-  <!-- CONTROLE REFINED FORMATO PS4 / XBOX -->
+  <!-- CONTROLE -->
   <div id="gamepad-layout" class="layout">
     <div class="gamepad-wrapper">
       <svg class="controller-svg" viewBox="0 0 310 200">
-        <path d="M 60,15 
-                 C 100,10 210,10 250,15 
-                 C 285,18 305,45 300,85 
-                 C 295,125 270,195 240,195 
-                 C 220,195 205,160 185,130 
-                 Q 155,115 125,130 
-                 C 105,160 90,195 70,195 
-                 C 40,195 15,125 10,85 
-                 C 5,45 25,18 60,15 Z" />
+        <path d="M 60,15 C 100,10 210,10 250,15 C 285,18 305,45 300,85 C 295,125 270,195 240,195 C 220,195 205,160 185,130 Q 155,115 125,130 C 105,160 90,195 70,195 C 40,195 15,125 10,85 C 5,45 25,18 60,15 Z" />
       </svg>
-
       <div class="gp-layer">
         <div class="gp-row triggers">
           <div class="row" style="gap:2px;"><div class="key trigger-btn" id="btn-6">L2</div><div class="key trigger-btn" id="btn-4">L1</div></div>
           <div class="row" style="gap:2px;"><div class="key trigger-btn" id="btn-5">R1</div><div class="key trigger-btn" id="btn-7">R2</div></div>
         </div>
-
         <div class="gp-row center-btns">
           <div class="key" id="btn-8" style="font-size: 8px; width: 36px; height: 16px;">SHARE</div>
           <div class="key" id="btn-9" style="font-size: 8px; width: 36px; height: 16px;">OPTIONS</div>
         </div>
-
         <div class="gp-row">
           <div class="dpad">
             <div></div><div class="key" id="btn-12">↑</div><div></div>
             <div class="key" id="btn-14">←</div><div></div><div class="key" id="btn-15">→</div>
             <div></div><div class="key" id="btn-13">↓</div><div></div>
           </div>
-
           <div class="face-buttons">
             <div></div><div class="key" id="btn-3">Y</div><div></div>
             <div class="key" id="btn-2">X</div><div></div><div class="key" id="btn-1">B</div>
             <div></div><div class="key" id="btn-0">A</div><div></div>
           </div>
         </div>
-
         <div class="gp-row sticks">
           <div class="stick-base key" id="btn-10">
             <span class="stick-label">L3</span>
@@ -351,6 +246,7 @@
     const mouseTracker = document.getElementById('mouse-tracker');
     let activeMode = 'keyboard';
     let mouseTimeout;
+    let lastX = 0, lastY = 0;
 
     function setMode(mode) {
       if (activeMode !== mode) {
@@ -365,48 +261,51 @@
       }
     }
 
-    // TRACKER DE MOVIMENTO DO MOUSE
-    window.addEventListener('mousemove', (e) => {
-      setMode('keyboard');
-      const movementX = e.movementX || 0;
-      const movementY = e.movementY || 0;
+    // CONEXÃO WEBSOCKET COM O NODE.JS (TECLADO + MOUSE GLOBAL)
+    const socket = new WebSocket('ws://localhost:8080');
 
-      if (Math.abs(movementX) > 1 || Math.abs(movementY) > 1) {
-        const angle = Math.atan2(movementY, movementX) * (180 / Math.PI) + 90;
-        mouseTracker.style.transform = `rotate(${angle}deg)`;
-        mouseTracker.style.opacity = '1';
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-        clearTimeout(mouseTimeout);
-        mouseTimeout = setTimeout(() => {
-          mouseTracker.style.opacity = '0.3';
-        }, 800);
+      if (data.type === 'keydown') {
+        setMode('keyboard');
+        const el = document.getElementById(`k-${data.keycode}`);
+        if (el) el.classList.add('pressed');
+      } 
+      else if (data.type === 'keyup') {
+        const el = document.getElementById(`k-${data.keycode}`);
+        if (el) el.classList.remove('pressed');
+      } 
+      else if (data.type === 'mousedown') {
+        setMode('keyboard');
+        const el = document.getElementById(`m-${data.button}`);
+        if (el) el.classList.add('pressed');
+      } 
+      else if (data.type === 'mouseup') {
+        const el = document.getElementById(`m-${data.button}`);
+        if (el) el.classList.remove('pressed');
+      } 
+      else if (data.type === 'mousemove') {
+        setMode('keyboard');
+        const dx = data.x - lastX;
+        const dy = data.y - lastY;
+        lastX = data.x;
+        lastY = data.y;
+
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+          mouseTracker.style.transform = `rotate(${angle}deg)`;
+          mouseTracker.style.opacity = '1';
+
+          clearTimeout(mouseTimeout);
+          mouseTimeout = setTimeout(() => {
+            mouseTracker.style.opacity = '0.3';
+          }, 800);
+        }
       }
-    });
+    };
 
-    // TECLADO E CLIQUE DE MOUSE
-    window.addEventListener('keydown', (e) => {
-      setMode('keyboard');
-      const el = document.getElementById(`key-${e.code}`);
-      if (el) el.classList.add('pressed');
-    });
-
-    window.addEventListener('keyup', (e) => {
-      const el = document.getElementById(`key-${e.code}`);
-      if (el) el.classList.remove('pressed');
-    });
-
-    window.addEventListener('mousedown', (e) => {
-      setMode('keyboard');
-      const el = document.getElementById(`mouse-${e.button}`);
-      if (el) el.classList.add('pressed');
-    });
-
-    window.addEventListener('mouseup', (e) => {
-      const el = document.getElementById(`mouse-${e.button}`);
-      if (el) el.classList.remove('pressed');
-    });
-
-    // LÓGICA DO GAMEPAD
+    // GAMEPAD API (CONTROLE CONTINUA LENDO NATIVAMENTE)
     function checkGamepadState() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       const gp = gamepads[0];
@@ -435,21 +334,9 @@
         document.getElementById('dot-left').style.transform = `translate(${leftX * 13}px, ${leftY * 13}px)`;
         document.getElementById('dot-right').style.transform = `translate(${rightX * 13}px, ${rightY * 13}px)`;
       }
+      requestAnimationFrame(checkGamepadState);
     }
-
-    // WEB WORKER EMBUTIDO PARA EXECUÇÃO EM SEGUNDO PLANO
-    const workerCode = `
-      setInterval(() => {
-        postMessage('tick');
-      }, 1000 / 60);
-    `;
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
-
-    worker.onmessage = () => {
-      checkGamepadState();
-    };
+    requestAnimationFrame(checkGamepadState);
   </script>
 </body>
 </html>

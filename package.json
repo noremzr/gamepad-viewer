@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "uiohook-napi": "^1.5.5",
+    "ws": "^8.21.3"
+  }
+}
