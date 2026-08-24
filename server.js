@@ -1,18 +1,27 @@
+const https = require('https');
+const fs = require('fs');
 const { WebSocketServer } = require('ws');
 const { uIOhook } = require('uiohook-napi');
 
-const wss = new WebSocketServer({ port: 8080 });
-console.log('Servidor WebSocket rodando em ws://localhost:8080');
+// Carrega os certificados locais
+const server = https.createServer({
+  cert: fs.readFileSync('./localhost+1.pem'),
+  key: fs.readFileSync('./localhost+1-key.pem')
+});
+
+const wss = new WebSocketServer({ server });
+server.listen(8080, () => {
+  console.log('Servidor WSS Seguro rodando em wss://127.0.0.1:8080');
+});
 
 function broadcast(data) {
   const message = JSON.stringify(data);
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) {
-      client.send(message);
-    }
+    if (client.readyState === 1) client.send(message);
   });
 }
 
+// CAPTURA TECLADO E MOUSE
 uIOhook.on('keydown', (e) => broadcast({ type: 'keydown', keycode: e.keycode }));
 uIOhook.on('keyup', (e) => broadcast({ type: 'keyup', keycode: e.keycode }));
 uIOhook.on('mousedown', (e) => broadcast({ type: 'mousedown', button: e.button }));

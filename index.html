@@ -267,7 +267,7 @@
     }
 
     // WEBSOCKET (TECLADO + MOUSE)
-    const socket = new WebSocket('ws://localhost:8080');
+    const socket = new WebSocket('wss://localhost:8080');
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
